@@ -1,0 +1,169 @@
+from cryptography import x509
+from cryptography.hazmat.primitives.asymmetric import rsa, ec
+from datetime import datetime
+
+
+def load_certificate(cert_path):
+    try:
+        with open(cert_path, "rb") as cert_file:
+            cert_data = cert_file.read()
+
+        certificate = x509.load_pem_x509_certificate(cert_data)
+        return certificate
+
+    except Exception as e:
+        print("Error loading certificate:")
+        print(e)
+        return None
+
+
+def display_certificate_info(cert):
+
+    print("\n" + "=" * 60)
+    print("CERTIFICATE INFORMATION")
+    print("=" * 60)
+
+    print("\nSubject:")
+    print(cert.subject.rfc4514_string())
+
+    print("\nIssuer:")
+    print(cert.issuer.rfc4514_string())
+
+    print("\nSerial Number:")
+    print(cert.serial_number)
+
+    print("\nVersion:")
+    print(cert.version.name)
+
+    print("\nSignature Algorithm:")
+    print(cert.signature_hash_algorithm.name)
+
+    print("\nValid From:")
+    print(cert.not_valid_before)
+
+    print("\nValid Until:")
+    print(cert.not_valid_after)
+
+
+def validate_certificate(cert):
+
+    print("\n" + "=" * 60)
+    print("VALIDATION RESULTS")
+    print("=" * 60)
+
+    current_time = datetime.utcnow()
+
+    valid = True
+
+    # Validity Check
+    if current_time < cert.not_valid_before:
+        print("Certificate is not yet valid")
+        valid = False
+
+    elif current_time > cert.not_valid_after:
+        print("Certificate has expired")
+        valid = False
+
+    else:
+        print("Certificate validity period is valid")
+
+    # Self-signed Check
+    if cert.subject == cert.issuer:
+        print("Certificate is Self-Signed")
+    else:
+        print("Certificate issued by a Certificate Authority")
+
+    return valid
+
+
+def display_public_key(cert):
+
+    print("\n" + "=" * 60)
+    print("PUBLIC KEY INFORMATION")
+    print("=" * 60)
+
+    public_key = cert.public_key()
+
+    if isinstance(public_key, rsa.RSAPublicKey):
+
+        print("Key Type : RSA")
+        print("Key Size :", public_key.key_size, "bits")
+
+    elif isinstance(public_key, ec.EllipticCurvePublicKey):
+
+        print("Key Type : ECC")
+        print("Curve    :", public_key.curve.name)
+
+    else:
+        print("Other Public Key Type")
+
+
+def evaluate_trustworthiness(cert, validity_status):
+
+    print("\n" + "=" * 60)
+    print("TRUST EVALUATION")
+    print("=" * 60)
+
+    score = 0
+
+    if validity_status:
+        score += 1
+
+    if cert.subject != cert.issuer:
+        score += 1
+
+    try:
+        key_size = cert.public_key().key_size
+
+        if key_size >= 2048:
+            score += 1
+
+    except:
+        pass
+
+    if score == 3:
+        print("Trust Level : HIGH")
+        print("Certificate appears trustworthy.")
+
+    elif score == 2:
+        print("Trust Level : MEDIUM")
+        print("Certificate is usable but should be verified.")
+
+    else:
+        print("Trust Level : LOW")
+        print("Certificate should not be trusted.")
+
+
+def main():
+
+    print("=" * 60)
+    print("X.509 CERTIFICATE PARSER AND VALIDATOR")
+    print("=" * 60)
+
+    cert_path = input(
+        "\nEnter PEM Certificate File Path: "
+    )
+
+    cert = load_certificate(cert_path)
+
+    if cert is None:
+        return
+
+    display_certificate_info(cert)
+
+    validity_status = validate_certificate(cert)
+
+    display_public_key(cert)
+
+    evaluate_trustworthiness(
+        cert,
+        validity_status
+    )
+
+    print("\n" + "=" * 60)
+    print("CERTIFICATE ANALYSIS COMPLETED")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()
