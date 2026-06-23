@@ -1,0 +1,33 @@
+import hashlib
+import time
+
+# Sample dataset
+data = "Cyber Security and Cryptography Lab Experiment"
+
+# MD5 Hash Generation
+start_md5 = time.time()
+md5_hash = hashlib.md5(data.encode()).hexdigest()
+end_md5 = time.time()
+
+# SHA-256 Hash Generation
+start_sha = time.time()
+sha256_hash = hashlib.sha256(data.encode()).hexdigest()
+end_sha = time.time()
+
+# Display Results
+print("Original Data:")
+print(data)
+
+print("\nMD5 Hash:")
+print(md5_hash)
+
+print("\nSHA-256 Hash:")
+print(sha256_hash)
+
+# Performance Analysis
+md5_time = (end_md5 - start_md5) * 1000000  # microseconds
+sha_time = (end_sha - start_sha) * 1000000
+
+print("\nExecution Time:")
+print(f"MD5     : {md5_time:.2f} microseconds")
+print(f"SHA-256 : {sha_time:.2f} microseconds")
