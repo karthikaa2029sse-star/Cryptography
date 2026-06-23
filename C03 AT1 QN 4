@@ -1,0 +1,174 @@
+import hashlib
+import secrets
+import time
+
+
+# -----------------------------
+# User Database
+# -----------------------------
+users = {
+    "alice": "password123"
+}
+
+# Secret keys for servers
+TGS_SECRET = "TGS_SECRET_KEY"
+SERVICE_SECRET = "SERVICE_SECRET_KEY"
+
+# Store used authenticators to detect replay attacks
+used_authenticators = set()
+
+
+# -----------------------------
+# Helper Function
+# -----------------------------
+def generate_hash(data):
+    return hashlib.sha256(data.encode()).hexdigest()
+
+
+# -----------------------------
+# Authentication Server (AS)
+# -----------------------------
+def authentication_server(username, password):
+
+    if username not in users:
+        return None
+
+    if users[username] != password:
+        return None
+
+    session_key = secrets.token_hex(16)
+
+    tgt = {
+        "username": username,
+        "session_key": session_key,
+        "timestamp": time.time(),
+        "issuer": "AS"
+    }
+
+    print("\n[AS] Authentication Successful")
+    print("[AS] Ticket Granting Ticket (TGT) Issued")
+
+    return tgt
+
+
+# -----------------------------
+# Ticket Granting Server (TGS)
+# -----------------------------
+def ticket_granting_server(tgt):
+
+    if tgt is None:
+        return None
+
+    service_session_key = secrets.token_hex(16)
+
+    service_ticket = {
+        "username": tgt["username"],
+        "service_session_key": service_session_key,
+        "timestamp": time.time(),
+        "issuer": "TGS"
+    }
+
+    print("\n[TGS] Service Ticket Generated")
+
+    return service_ticket
+
+
+# -----------------------------
+# Client Authenticator
+# -----------------------------
+def create_authenticator(username):
+
+    timestamp = int(time.time())
+
+    authenticator = {
+        "username": username,
+        "timestamp": timestamp
+    }
+
+    return authenticator
+
+
+# -----------------------------
+# Service Validation
+# -----------------------------
+def validate_service_request(service_ticket, authenticator):
+
+    current_time = int(time.time())
+
+    auth_id = (
+        authenticator["username"],
+        authenticator["timestamp"]
+    )
+
+    # Replay Attack Detection
+    if auth_id in used_authenticators:
+        print("\n[SERVICE]")
+        print("Replay Attack Detected!")
+        return False
+
+    # Ticket expiration check
+    if current_time - authenticator["timestamp"] > 30:
+        print("\n[SERVICE]")
+        print("Authenticator Expired!")
+        return False
+
+    used_authenticators.add(auth_id)
+
+    print("\n[SERVICE]")
+    print("Ticket Validated Successfully")
+    print("Access Granted")
+
+    return True
+
+
+# -----------------------------
+# Main Program
+# -----------------------------
+def main():
+
+    print("=" * 60)
+    print("KERBEROS AUTHENTICATION SIMULATION")
+    print("=" * 60)
+
+    username = input("Username: ")
+    password = input("Password: ")
+
+    # Step 1: Authentication Server
+    tgt = authentication_server(username, password)
+
+    if tgt is None:
+        print("\nAuthentication Failed")
+        return
+
+    # Step 2: Ticket Granting Server
+    service_ticket = ticket_granting_server(tgt)
+
+    # Step 3: Client Creates Authenticator
+    authenticator = create_authenticator(username)
+
+    # Step 4: Access Service
+    print("\nAttempting Service Access...")
+    validate_service_request(
+        service_ticket,
+        authenticator
+    )
+
+    # Step 5: Replay Attack Simulation
+    print("\n" + "=" * 60)
+    print("SIMULATING REPLAY ATTACK")
+    print("=" * 60)
+
+    print("\nReusing Old Authenticator...")
+
+    validate_service_request(
+        service_ticket,
+        authenticator
+    )
+
+    print("\n" + "=" * 60)
+    print("SIMULATION COMPLETED")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()
